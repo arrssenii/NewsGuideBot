@@ -5,6 +5,7 @@ from telegram import ReplyKeyboardMarkup  # для бота
 import datetime  # для рассылки
 import requests  # для сбора данных
 import pyshorteners  # для коротких ссылок
+from config import token
 
 short = pyshorteners.Shortener()  # объект класса, укорачивающего ссылки
 
@@ -277,7 +278,7 @@ markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
 
 def main():  # основная функция
     # Создаём объект updater.
-    updater = Updater('5316273924:AAFk66ewNhn08ex7Oqu-DIbN35EuvyFGAFg', use_context=True)
+    updater = Updater(token, use_context=True)
 
     # Получаем из него диспетчер сообщений.
     dp = updater.dispatcher
