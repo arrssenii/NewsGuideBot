@@ -1,0 +1,4 @@
+python-telegram-bot=13.11
+pyshorteners=1.0.1
+datetime
+requests
