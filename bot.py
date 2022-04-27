@@ -164,16 +164,22 @@ def set_timer(update, context):
         # (секунды таймера)
         time = context.args[0].split(':')
 
-        # Добавляем задачу в очередь
-        # и останавливаем предыдущую (если она была)
-        job_removed = remove_job_if_exists(str(chat_id), context)
-        context.job_queue.run_daily(task, datetime.time(hour=int(time[0]), minute=int(time[1])),
-                                    context=chat_id, name=str(chat_id))
+        if int(time[0]) < 3:
+            time[0] = 24 + int(time[0])
 
-        text = f'Теперь каждый день в {context.args[0]} вы будете получать свежую новость!'
-        if job_removed:
-            text += 'Старая рассылка отключена.'
-        update.message.reply_text(text)
+        if int(time[0]) < 0 or int(time[0]) > 24 or int(time[1]) < 0 or int(time[1]) > 60:
+            update.message.reply_text('Некорректно введено время.')
+        else:
+            # Добавляем задачу в очередь
+            # и останавливаем предыдущую (если она была)
+            job_removed = remove_job_if_exists(str(chat_id), context)
+            context.job_queue.run_daily(task, datetime.time(hour=(int(time[0]) - 3), minute=int(time[1])),
+                                        context=chat_id, name=str(chat_id))
+
+            text = f'Теперь каждый день в {context.args[0]} вы будете получать свежую новость!'
+            if job_removed:
+                text += 'Старая рассылка отключена.'
+            update.message.reply_text(text)
 
     except (IndexError, ValueError):
         update.message.reply_text('Использование: /notif_news <время>\n'
