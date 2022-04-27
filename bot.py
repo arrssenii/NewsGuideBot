@@ -34,74 +34,62 @@ def helppy(update, context):  # команда помощи со списком 
         "/help - список команд. вы только что вызвали.")
 
 
-# команда которая отправляет пользователю свежайшую (для апишки) новость на русском языке
-def fresh_news(update, context):
+def news():  # cбор новостей
     # собираем запрос
     request = "https://newsapi.org/v2/top-headlines?country=ru&apiKey=499c7a59bd714f83abbee6644022628e"
     response = requests.get(request)  # Выполняем запрос.
+    json_response = response.json()['articles']  # преобразуем ответ в json-объект
+    return json_response  # возвращаем
+
+
+# команда которая отправляет пользователю свежайшую (для апишки) новость на русском языке
+def fresh_news(update, context):
     news_api = []  # список для хранения будущих новостей
-    if response:
-        json_response = response.json()  # преобразуем ответ в json-объект
-        responce = json_response['articles']  # достаём новости
-        for article in responce:  # пробегаемся по ним, оставляя только нужное
-            source = (article['source']['name'])
-            title = (article['title'])
-            url = article['url']
-            news_api.append({'source': source, 'title': title, 'url': url})  # добавляем всё, что нужно, в список
-        # отправляем пользователю заголовок, источник и ссылку на новость
-        update.message.reply_text(f'{news_api[0]["title"]}\n'
-                                  f'Источник - {news_api[0]["source"]}\n'
-                                  f'Читать новость - {short.tinyurl.short(news_api[0]["url"])}')
-    else:  # если что-то пошло не так, выводим в консоль ошибку
-        update.message.reply_text('Техническая ошибка. Повторите попытку позже.')  # сообщаем об ошибке пользователю
-        print('Ошибка:')
-        print(request)
-        print("Http статус:", response.status_code, "(", response.reason, ")")
+    response = news()  # достаём новости
+    for article in response:  # пробегаемся по ним, оставляя только нужное
+        source = (article['source']['name'])
+        title = (article['title'])
+        url = article['url']
+        news_api.append({'source': source, 'title': title, 'url': url})  # добавляем всё, что нужно, в список
+    # отправляем пользователю заголовок, источник и ссылку на новость
+    update.message.reply_text(f'{news_api[0]["title"]}\n'
+                              f'Источник - {news_api[0]["source"]}\n'
+                              f'Читать новость - {short.tinyurl.short(news_api[0]["url"])}')
 
 
 def some_news(update, context):  # команда выводящая несколько новостей
-    # собираем запрос
-    request = "https://newsapi.org/v2/top-headlines?country=ru&apiKey=499c7a59bd714f83abbee6644022628e"
-    response = requests.get(request)  # Выполняем запрос.
     news_api = []  # список для хранения будущих новостей
-    if response:
-        json_response = response.json()  # Преобразуем ответ в json-объект
-        responce = json_response['articles']  # достаём новости
-        for article in responce:  # пробегаемся по ним, собирая всё "по полочкам"
-            source = (article['source']['name'])
-            title = (article['title'])
-            url = article['url']
-            time = article['publishedAt']
-            # добавляем всё, что нужно, в список
-            news_api.append({'source': source, 'title': title, 'url': url, 'time': time})
-        k = 5  # количество новостей по умолчанию
-        if context.args and context.args[0].isdigit():  # если аргумент (количество новостей) был передан
-            if 1 < int(context.args[0]) <= len(news_api): # в лучшем случае
-                k = int(context.args[0])
-                for i in range(k):
-                    update.message.reply_text(f'{news_api[i]["title"]}\n'
-                                              f'Источник - {news_api[i]["source"]}\n'
-                                              f'Опубликовано {news_api[i]["time"][:10]} '
-                                              f'в {news_api[i]["time"][11:16]}\n'
-                                              f'Читать новость - {short.tinyurl.short(news_api[i]["url"])}')
-            elif int(context.args[0]) == 1:  # в плохих случаях
-                update.message.reply_text('Воспользуйтесь командой /fresh_news')
-            elif int(context.args[0]) > len(news_api):
-                update.message.reply_text(f'Превышен предел. Максимальное количество новостей за раз - {len(news_api)}')
-            else:
-                update.message.reply_text('Невозможно выполнить ваш запрос')
-        else:
+    response = news()  # достаём новости
+    for article in response:  # пробегаемся по ним, собирая всё "по полочкам"
+        source = (article['source']['name'])
+        title = (article['title'])
+        url = article['url']
+        time = article['publishedAt']
+        # добавляем всё, что нужно, в список
+        news_api.append({'source': source, 'title': title, 'url': url, 'time': time})
+    k = 5  # количество новостей по умолчанию
+    if context.args and context.args[0].isdigit():  # если аргумент (количество новостей) был передан
+        if 1 < int(context.args[0]) <= len(news_api): # в лучшем случае
+            k = int(context.args[0])
             for i in range(k):
                 update.message.reply_text(f'{news_api[i]["title"]}\n'
                                           f'Источник - {news_api[i]["source"]}\n'
                                           f'Опубликовано {news_api[i]["time"][:10]} '
                                           f'в {news_api[i]["time"][11:16]}\n'
                                           f'Читать новость - {short.tinyurl.short(news_api[i]["url"])}')
-    else:  # если что-то пошло не так, выводим в консоль ошибку
-        update.message.reply_text('Техническая ошибка. Повторите попытку позже.')
-        print('Ошибка:')
-        print(request)
-        print("Http статус:", response.status_code, "(", response.reason, ")")
+        elif int(context.args[0]) == 1:  # в плохих случаях
+            update.message.reply_text('Воспользуйтесь командой /fresh_news')
+        elif int(context.args[0]) > len(news_api):
+            update.message.reply_text(f'Превышен предел. Максимальное количество новостей за раз - {len(news_api)}')
+        else:
+            update.message.reply_text('Невозможно выполнить ваш запрос')
+    else:
+        for i in range(k):
+            update.message.reply_text(f'{news_api[i]["title"]}\n'
+                                      f'Источник - {news_api[i]["source"]}\n'
+                                      f'Опубликовано {news_api[i]["time"][:10]} '
+                                      f'в {news_api[i]["time"][11:16]}\n'
+                                      f'Читать новость - {short.tinyurl.short(news_api[i]["url"])}')
 
 
 def contacts(update, context):  # команда выдаёт пользователю мои ФИ и способы связаться
@@ -120,15 +108,14 @@ def currate(update, context):  # команда выводит актуальн�
         data = [i for i in content['Valute']]
         for i in data:
             values = content['Valute'][i]  # отбираем только нужные данные
-            name = values['Name']
             value = values['Value']
             charCode = values['CharCode']
             # отбираем только некоторые (интересные) валюты
-            if name == 'Доллар США' or name == 'Евро' or name == 'Польский злотый' or name == 'Японских иен'\
-                    or name == 'Вон Республики Корея' or name == 'Швейцарский франк'\
-                    or name == 'Чешских крон' or name == 'Украинских гривен' or name == 'Китайский юань'\
-                    or name == 'Армянских драмов' or name == 'Белорусский рубль' or\
-                    name == 'Фунт стерлингов Соединенного королевства' or name == 'Австралийский доллар':
+            if charCode == 'USD' or charCode == 'EUR' or charCode == 'PLN' or charCode == 'JPY'\
+                    or charCode == 'KRW' or charCode == 'CHF'\
+                    or charCode == 'CZK' or charCode == 'UAH' or charCode == 'CNY'\
+                    or charCode == 'AMD' or charCode == 'BYN' or\
+                    charCode == 'GBP' or charCode == 'AUD':
                 currencies.append({'CharCode': charCode, 'Value': value})
         text = ''  # заготовка для сообщение
         k = 1  # количество валюты, по умолчанию 1
@@ -161,12 +148,10 @@ def set_timer(update, context):
     chat_id = update.message.chat_id
     try:
         # args[0] должен содержать значение аргумента
-        # (секунды таймера)
+        # (время)
         time = context.args[0].split(':')
-
         if int(time[0]) < 3:
             time[0] = 24 + int(time[0])
-
         if int(time[0]) < 0 or int(time[0]) > 24 or int(time[1]) < 0 or int(time[1]) > 60:
             update.message.reply_text('Некорректно введено время.')
         else:
@@ -180,7 +165,6 @@ def set_timer(update, context):
             if job_removed:
                 text += 'Старая рассылка отключена.'
             update.message.reply_text(text)
-
     except (IndexError, ValueError):
         update.message.reply_text('Использование: /notif_news <время>\n'
                                   'Время в формате 00:00')
@@ -189,26 +173,16 @@ def set_timer(update, context):
 def task(context):
     """Выводит сообщение"""
     job = context.job
-    # собираем запрос
-    request = "https://newsapi.org/v2/top-headlines?country=ru&apiKey=499c7a59bd714f83abbee6644022628e"
-    response = requests.get(request)  # Выполняем запрос.
     news_api = []  # список для хранения будущих новостей
-    if response:
-        json_response = response.json()  # Преобразуем ответ в json-объект
-        responce = json_response['articles']  # достаём новости
-        for article in responce:  # пробегаемся по ним, собирая всё "по полочкам"
-            source = (article['source']['name'])
-            title = (article['title'])
-            url = article['url']
-            news_api.append({'source': source, 'title': title, 'url': url})  # добавляем всё, что нужно, в список
-        context.bot.send_message(job.context, text=f'{news_api[0]["title"]}\n'
-                                                   f'Источник - {news_api[0]["source"]}\n'
-                                                   f'Читать новость - {short.tinyurl.short(news_api[0]["url"])}')
-    else:  # если что-то пошло не так, выводим в консоль ошибку
-        context.bot.send_message(job.context, text='Техническая ошибка. Повторите попытку позже.')
-        print('Ошибка:')
-        print(request)
-        print("Http статус:", response.status_code, "(", response.reason, ")")
+    response = news()  # достаём новости
+    for article in response:  # пробегаемся по ним, собирая всё "по полочкам"
+        source = (article['source']['name'])
+        title = (article['title'])
+        url = article['url']
+        news_api.append({'source': source, 'title': title, 'url': url})  # добавляем всё, что нужно, в список
+    context.bot.send_message(job.context, text=f'{news_api[0]["title"]}\n'
+                                               f'Источник - {news_api[0]["source"]}\n'
+                                               f'Читать новость - {short.tinyurl.short(news_api[0]["url"])}')
     response = requests.get("https://www.cbr-xml-daily.ru/daily_json.js")
     currencies = []
     if response.status_code == 200:
@@ -216,19 +190,18 @@ def task(context):
         data = [i for i in content['Valute']]
         for i in data:
             values = content['Valute'][i]
-            name = values['Name']
             value = values['Value']
             charCode = values['CharCode']
-            if name == 'Доллар США' or name == 'Евро' or name == 'Польский злотый' or name == 'Японских иен' \
-                    or name == 'Вон Республики Корея' or name == 'Швейцарский франк' \
-                    or name == 'Чешских крон' or name == 'Украинских гривен' or name == 'Китайский юань' \
-                    or name == 'Армянских драмов' or name == 'Белорусский рубль' or \
-                    name == 'Фунт стерлингов Соединенного королевства' or name == 'Австралийский доллар':
+            if charCode == 'USD' or charCode == 'EUR' or charCode == 'PLN' or charCode == 'JPY' \
+                    or charCode == 'KRW' or charCode == 'CHF' \
+                    or charCode == 'CZK' or charCode == 'UAH' or charCode == 'CNY' \
+                    or charCode == 'AMD' or charCode == 'BYN' or \
+                    charCode == 'GBP' or charCode == 'AUD':
                 currencies.append({'CharCode': charCode, 'Value': value})
         text = ''
         for i in currencies:
             text += f'1 {i["CharCode"]} = {round(i["Value"], 2)} RUB\n'
-        context.bot.send_message(text)
+        context.bot.send_message(job.context, text=text)
     else:  # если что-то пошло не так, выводим в консоль ошибку
         context.bot.send_message('Техническая ошибка. Повторите попытку позже.')
         print('Ошибка:')
@@ -266,7 +239,8 @@ def search_news(update, context):  # команда для поиска ново
             if response.json()["totalResults"] == 0:
                 update.message.reply_text('Нет результатов.')  # если результатов 0, то сообщаем пользователю
             else:  # если же проблема не в отсутствии результатов, то сообщаем пользователю и пишем в консоль об ошибке
-                update.message.reply_text('Техническая ошибка. Попробуйте ввести слово ещё раз или повторите попытку позже.')
+                update.message.reply_text('Техническая ошибка. '
+                                          'Попробуйте ввести слово ещё раз или повторите попытку позже.')
                 print('Ошибка:')
                 print(request)
                 print("Http статус:", response.status_code, "(", response.reason, ")")
@@ -285,7 +259,6 @@ markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
 def main():  # основная функция
     # Создаём объект updater.
     updater = Updater(token, use_context=True)
-
     # Получаем из него диспетчер сообщений.
     dp = updater.dispatcher
     # добавляем команды в диспетчер
@@ -303,7 +276,6 @@ def main():  # основная функция
                                   pass_chat_data=True))
     dp.add_handler(CommandHandler("off_notif_news", unset,
                                   pass_chat_data=True))
-
     # Запускаем цикл приема и обработки сообщений.
     updater.start_polling()
     # Ждём завершения приложения.
