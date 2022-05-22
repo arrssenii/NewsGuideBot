@@ -1,37 +1,23 @@
 # Импортируем необходимые классы.
-from telegram.ext import Updater
-from telegram.ext import CommandHandler
-from telegram import ReplyKeyboardMarkup  # для бота
-import datetime  # для рассылки
+import telebot
+from telebot import types  # для работы с ботом
 import requests  # для сбора данных
 import pyshorteners  # для коротких ссылок
-from config import token
+from config import token  # токен
 
 short = pyshorteners.Shortener()  # объект класса, укорачивающего ссылки
+bot = telebot.TeleBot(token)  # объект класса TeleBot
 
 
-def start(update, context):  # команда старта
-    update.message.reply_text(
-        "Я - бот проекта News Guide.\nЧтобы узнать, что я могу, введите команду /help\n"
-        "Сайт проекта - http://kirillka00.pythonanywhere.com/home", reply_markup=markup)
-
-
-def helppy(update, context):  # команда помощи со списком и описанием команд
-    update.message.reply_text(
-        "/fresh_news - одна свежая новость\n\n"
-        "/some_news - пять свежих новостей подряд\n"
-        "Использование: /some_news <количество>(по умолчанию 5)\n\n"
-        "/search - поиск новости по ключевому слову\n"
-        "Использование: /search <ключевое слово>\n\n"
-        "/course - актуальный курс валют\n"
-        "Использование: /course <количество валюты>(по умолчанию 1)\n\n"
-        "/notif_news - включить/изменить ежедневную рассылку новостей и курса валют в определённое время (по МСК)\n"
-        "Использование: /notif_news <время>\n"
-        "Время в формате 00:00\n\n"
-        "/off_notif_news - отключить ежедневную рассылку\n\n"
-        "/site - ссылка на сайт проекта News Guide\n\n"
-        "/contacts - контакты разработчика\n\n"
-        "/help - список команд. вы только что вызвали.")
+def helppy(message):  # команда помощи со списком и описанием команд
+    bot.send_message(message.chat.id,
+                     "🗞Новость - одна свежая новость\n\n"
+                     "🗞Новости🗞 - несколько свежих новостей подряд\n\n"
+                     "🔍Поиск - поиск новости по ключевому слову\n\n"
+                     "📈Курс валют - актуальный курс валют\n\n"
+                     "🔗Сайт - ссылка на сайт проекта News Guide\n\n"
+                     "📩Контакты - контакты разработчика\n\n"
+                     "⚠Помощь - список команд. вы только что вызвали.")
 
 
 def news():  # cбор новостей
@@ -43,7 +29,7 @@ def news():  # cбор новостей
 
 
 # команда которая отправляет пользователю свежайшую (для апишки) новость на русском языке
-def fresh_news(update, context):
+def fresh_news(message):
     news_api = []  # список для хранения будущих новостей
     response = news()  # достаём новости
     for article in response:  # пробегаемся по ним, оставляя только нужное
@@ -52,12 +38,12 @@ def fresh_news(update, context):
         url = article['url']
         news_api.append({'source': source, 'title': title, 'url': url})  # добавляем всё, что нужно, в список
     # отправляем пользователю заголовок, источник и ссылку на новость
-    update.message.reply_text(f'{news_api[0]["title"]}\n'
-                              f'Источник - {news_api[0]["source"]}\n'
-                              f'Читать новость - {short.tinyurl.short(news_api[0]["url"])}')
+    bot.send_message(message.chat.id, f'{news_api[0]["title"]}\n'
+                                      f'Источник - {news_api[0]["source"]}\n'
+                                      f'Читать новость - {short.tinyurl.short(news_api[0]["url"])}')
 
 
-def some_news(update, context):  # команда выводящая несколько новостей
+def some_news(message, context):  # команда выводящая несколько новостей
     news_api = []  # список для хранения будущих новостей
     response = news()  # достаём новости
     for article in response:  # пробегаемся по ним, собирая всё "по полочкам"
@@ -67,40 +53,23 @@ def some_news(update, context):  # команда выводящая неско�
         time = article['publishedAt']
         # добавляем всё, что нужно, в список
         news_api.append({'source': source, 'title': title, 'url': url, 'time': time})
-    k = 5  # количество новостей по умолчанию
-    if context.args and context.args[0].isdigit():  # если аргумент (количество новостей) был передан
-        if 1 < int(context.args[0]) <= len(news_api): # в лучшем случае
-            k = int(context.args[0])
-            for i in range(k):
-                update.message.reply_text(f'{news_api[i]["title"]}\n'
+    for i in range(int(context)):
+        bot.send_message(message.chat.id, f'{news_api[i]["title"]}\n'
                                           f'Источник - {news_api[i]["source"]}\n'
                                           f'Опубликовано {news_api[i]["time"][:10]} '
                                           f'в {news_api[i]["time"][11:16]}\n'
                                           f'Читать новость - {short.tinyurl.short(news_api[i]["url"])}')
-        elif int(context.args[0]) == 1:  # в плохих случаях
-            update.message.reply_text('Воспользуйтесь командой /fresh_news')
-        elif int(context.args[0]) > len(news_api):
-            update.message.reply_text(f'Превышен предел. Максимальное количество новостей за раз - {len(news_api)}')
-        else:
-            update.message.reply_text('Невозможно выполнить ваш запрос')
-    else:
-        for i in range(k):
-            update.message.reply_text(f'{news_api[i]["title"]}\n'
-                                      f'Источник - {news_api[i]["source"]}\n'
-                                      f'Опубликовано {news_api[i]["time"][:10]} '
-                                      f'в {news_api[i]["time"][11:16]}\n'
-                                      f'Читать новость - {short.tinyurl.short(news_api[i]["url"])}')
 
 
-def contacts(update, context):  # команда выдаёт пользователю мои ФИ и способы связаться
-    update.message.reply_text('Семенихин Арсений\nvk - https://vk.com/arssemenikhin\ntg - @arrssenii')
+def contacts(message):  # команда выдаёт пользователю мои ФИ и способы связаться
+    bot.send_message(message.chat.id, 'Семенихин Арсений\nvk - https://vk.com/arssemenikhin\ntg - @arrssenii')
 
 
-def site(update, context):  # команда выводит сайт проекта
-    update.message.reply_text('Сайт проекта - http://kirillka00.pythonanywhere.com/home')
+def site(message):  # команда выводит сайт проекта
+    bot.send_message(message.chat.id, 'Сайт проекта - http://kirillka00.pythonanywhere.com/home')
 
 
-def currate(update, context):  # команда выводит актуальный курс валют
+def currate(message):  # команда выводит актуальный курс валют
     response = requests.get("https://www.cbr-xml-daily.ru/daily_json.js")  # собираем запрос
     currencies = []  # список для хранения данных
     if response.status_code == 200:  # в хорошем случае
@@ -111,115 +80,40 @@ def currate(update, context):  # команда выводит актуальн�
             value = values['Value']
             charCode = values['CharCode']
             # отбираем только некоторые (интересные) валюты
-            if charCode == 'USD' or charCode == 'EUR' or charCode == 'PLN' or charCode == 'JPY'\
-                    or charCode == 'KRW' or charCode == 'CHF'\
-                    or charCode == 'CZK' or charCode == 'UAH' or charCode == 'CNY'\
-                    or charCode == 'AMD' or charCode == 'BYN' or\
-                    charCode == 'GBP' or charCode == 'AUD':
-                currencies.append({'CharCode': charCode, 'Value': value})
-        text = ''  # заготовка для сообщение
-        k = 1  # количество валюты, по умолчанию 1
-        if context.args and context.args[0].isdigit():  # если аргумент был передан
-            k = int(context.args[0])
-        for i in currencies:
-            text += f'{k} {i["CharCode"]} = {round(i["Value"] * k, 2)} RUB\n'
-        update.message.reply_text(text)  # выдаём ответ пользователю
-    else:  # если что-то пошло не так, выводим в консоль ошибку
-        update.message.reply_text('Техническая ошибка. Повторите попытку позже.')
-        print('Ошибка:')
-        print(response)
-        print("Http статус:", response.status_code, "(", response.reason, ")")
-
-
-def remove_job_if_exists(name, context):
-    """Удаляем задачу по имени.
-    Возвращаем True если задача была успешно удалена."""
-    current_jobs = context.job_queue.get_jobs_by_name(name)
-    if not current_jobs:
-        return False
-    for job in current_jobs:
-        job.schedule_removal()
-    return True
-
-
-# Обычный обработчик, как и те, которыми мы пользовались раньше.
-def set_timer(update, context):
-    """Добавляем задачу в очередь"""
-    chat_id = update.message.chat_id
-    try:
-        # args[0] должен содержать значение аргумента
-        # (время)
-        time = context.args[0].split(':')
-        if int(time[0]) < 3:
-            time[0] = 24 + int(time[0])
-        if int(time[0]) < 0 or int(time[0]) > 24 or int(time[1]) < 0 or int(time[1]) > 60:
-            update.message.reply_text('Некорректно введено время.')
-        else:
-            # Добавляем задачу в очередь
-            # и останавливаем предыдущую (если она была)
-            job_removed = remove_job_if_exists(str(chat_id), context)
-            context.job_queue.run_daily(task, datetime.time(hour=(int(time[0]) - 3), minute=int(time[1])),
-                                        context=chat_id, name=str(chat_id))
-
-            text = f'Теперь каждый день в {context.args[0]} вы будете получать свежую новость!'
-            if job_removed:
-                text += 'Старая рассылка отключена.'
-            update.message.reply_text(text)
-    except (IndexError, ValueError):
-        update.message.reply_text('Использование: /notif_news <время>\n'
-                                  'Время в формате 00:00')
-
-
-def task(context):
-    """Выводит сообщение"""
-    job = context.job
-    news_api = []  # список для хранения будущих новостей
-    response = news()  # достаём новости
-    for article in response:  # пробегаемся по ним, собирая всё "по полочкам"
-        source = (article['source']['name'])
-        title = (article['title'])
-        url = article['url']
-        news_api.append({'source': source, 'title': title, 'url': url})  # добавляем всё, что нужно, в список
-    context.bot.send_message(job.context, text=f'{news_api[0]["title"]}\n'
-                                               f'Источник - {news_api[0]["source"]}\n'
-                                               f'Читать новость - {short.tinyurl.short(news_api[0]["url"])}')
-    response = requests.get("https://www.cbr-xml-daily.ru/daily_json.js")
-    currencies = []
-    if response.status_code == 200:
-        content = response.json()
-        data = [i for i in content['Valute']]
-        for i in data:
-            values = content['Valute'][i]
-            value = values['Value']
-            charCode = values['CharCode']
             if charCode == 'USD' or charCode == 'EUR' or charCode == 'PLN' or charCode == 'JPY' \
                     or charCode == 'KRW' or charCode == 'CHF' \
                     or charCode == 'CZK' or charCode == 'UAH' or charCode == 'CNY' \
                     or charCode == 'AMD' or charCode == 'BYN' or \
                     charCode == 'GBP' or charCode == 'AUD':
                 currencies.append({'CharCode': charCode, 'Value': value})
-        text = ''
+        text = ''  # заготовка для сообщение
         for i in currencies:
-            text += f'1 {i["CharCode"]} = {round(i["Value"], 2)} RUB\n'
-        context.bot.send_message(job.context, text=text)
+            text += f'1 {i["CharCode"]} = {round(i["Value"], 3)} RUB\n'
+        bot.send_message(message.chat.id, text)  # выдаём ответ пользователю
     else:  # если что-то пошло не так, выводим в консоль ошибку
-        context.bot.send_message('Техническая ошибка. Повторите попытку позже.')
+        bot.send_message(message.chat.id, 'Техническая ошибка. Повторите попытку позже.')
         print('Ошибка:')
         print(response)
         print("Http статус:", response.status_code, "(", response.reason, ")")
 
 
-def unset(update, context):
-    """Удаляет задачу, если пользователь передумал"""
-    chat_id = update.message.chat_id
-    job_removed = remove_job_if_exists(str(chat_id), context)
-    text = 'Рассылка отключена' if job_removed else 'Вы не настраивали рассылку'
-    update.message.reply_text(text)
+def back(message):  # команда назад
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=False)
+    item_news = types.KeyboardButton('🗞Новость')
+    item_somenews = types.KeyboardButton('🗞Новости🗞')
+    item_course = types.KeyboardButton('📈Курс валют')
+    item_site = types.KeyboardButton('🔗Сайт')
+    item_contact = types.KeyboardButton('📩Контакты')
+    item_help = types.KeyboardButton('⚠Помощь')
+    item_search = types.KeyboardButton('🔍Поиск')
+    markup.add(item_news, item_somenews, item_course, item_search,
+               item_site, item_contact, item_help)
+    bot.send_message(message.chat.id, '⬅Назад', reply_markup=markup)
 
 
-def search_news(update, context):  # команда для поиска новости по ключевому слову
-    if context.args:  # если ключевое слово было введено
-        request = f"https://newsapi.org/v2/everything?language=ru&q={context.args[0]}&sortBy=popularity&searchIn=title"\
+def search_news(message, context):  # команда для поиска новости по ключевому слову
+    if context:  # если ключевое слово было введено
+        request = f"https://newsapi.org/v2/everything?language=ru&q={context}&sortBy=popularity&searchIn=title" \
                   f"&apiKey=499c7a59bd714f83abbee6644022628e"  # собираем запрос
         response = requests.get(request)  # Выполняем запрос.
         news_api = []  # список для хранения будущих новостей
@@ -232,56 +126,99 @@ def search_news(update, context):  # команда для поиска ново
                 url = article['url']
                 news_api.append({'source': source, 'title': title, 'url': url})  # добавляем всё, что нужно, в список
         if news_api:
-            update.message.reply_text(f'{news_api[0]["title"]}\n'
+            bot.send_message(message.chat.id, f'{news_api[0]["title"]}\n'
                                       f'Источник - {news_api[0]["source"]}\n'
                                       f'Читать новость - {short.tinyurl.short(news_api[0]["url"])}')
         else:
             if response.json()["totalResults"] == 0:
-                update.message.reply_text('Нет результатов.')  # если результатов 0, то сообщаем пользователю
+                bot.send_message(message.chat.id, 'Нет результатов.')  # если результатов 0, то сообщаем пользователю
             else:  # если же проблема не в отсутствии результатов, то сообщаем пользователю и пишем в консоль об ошибке
-                update.message.reply_text('Техническая ошибка. '
-                                          'Попробуйте ввести слово ещё раз или повторите попытку позже.')
+                bot.send_message(message.chat.id, 'Техническая ошибка. '
+                                                  'Попробуйте ввести слово ещё раз или повторите попытку позже.')
                 print('Ошибка:')
                 print(request)
                 print("Http статус:", response.status_code, "(", response.reason, ")")
-    else:  # если пользователь не ввёл ключевое слово
-        update.message.reply_text('Использование: /search <ключевое слово>')
 
 
-# кастомная клавиатура
-reply_keyboard = [['/fresh_news', '/some_news'],
-                  ['/course'], ['/off_notif_news'],
-                  ['/site', '/contacts'],
-                  ['/help']]
-markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
+@bot.message_handler(commands=['start'])
+def start(message):  # команда старта
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=False)
+    item_news = types.KeyboardButton('🗞Новость')
+    item_somenews = types.KeyboardButton('🗞Новости🗞')
+    item_course = types.KeyboardButton('📈Курс валют')
+    item_site = types.KeyboardButton('🔗Сайт')
+    item_contact = types.KeyboardButton('📩Контакты')
+    item_help = types.KeyboardButton('⚠Помощь')
+    item_search = types.KeyboardButton('🔍Поиск')
+    markup.add(item_news, item_somenews, item_course, item_search,
+               item_site, item_contact, item_help)  # кастомная клавиатура
+    bot.send_message(message.chat.id,
+                     'Я - бот проекта News Guide.\nЧтобы узнать, что я могу, нажмите "⚠Помощь"\n'
+                     'Сайт проекта - http://kirillka00.pythonanywhere.com/home', reply_markup=markup)
 
 
-def main():  # основная функция
-    # Создаём объект updater.
-    updater = Updater(token, use_context=True)
-    # Получаем из него диспетчер сообщений.
-    dp = updater.dispatcher
-    # добавляем команды в диспетчер
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("help", helppy))
-    dp.add_handler(CommandHandler("fresh_news", fresh_news))
-    dp.add_handler(CommandHandler("some_news", some_news))
-    dp.add_handler(CommandHandler("search", search_news))
-    dp.add_handler(CommandHandler("course", currate))
-    dp.add_handler(CommandHandler("contacts", contacts))
-    dp.add_handler(CommandHandler("site", site))
-    dp.add_handler(CommandHandler("notif_news", set_timer,
-                                  pass_args=True,
-                                  pass_job_queue=True,
-                                  pass_chat_data=True))
-    dp.add_handler(CommandHandler("off_notif_news", unset,
-                                  pass_chat_data=True))
-    # Запускаем цикл приема и обработки сообщений.
-    updater.start_polling()
-    # Ждём завершения приложения.
-    updater.idle()
+@bot.message_handler(content_types=['text'])  # обработчик команд
+def bot_message(message):
+    if message.text == '⚠Помощь':  # помощь
+        helppy(message)
+    elif message.text == '🗞Новость':  # новость
+        fresh_news(message)
+    elif message.text == '🗞Новости🗞':  # несколько новостей
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        item2 = types.KeyboardButton('2️⃣')
+        item3 = types.KeyboardButton('3️⃣')
+        item4 = types.KeyboardButton('4️⃣')
+        item5 = types.KeyboardButton('5️⃣')
+        back = types.KeyboardButton('⬅Назад')  # кнопка назад, если пользователь передумал
+        markup.add(item2, item3, item4, item5, back)
+        msg = bot.send_message(message.chat.id, 'Сколько?', reply_markup=markup)  # вызов другой клавиатуры
+        bot.register_next_step_handler(msg, user_answer)  # пошаговый обработчик отсылает к функции user_answer
+    elif message.text == '🔍Поиск':  # поиск
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        back = types.KeyboardButton('⬅Назад')
+        markup.add(back)  # кнопка назад, если пользователь передумал
+        msg = bot.send_message(message.chat.id, 'Введите ключевое слово.', reply_markup=markup)
+        bot.register_next_step_handler(msg, user_answer2)  # пошаговый обработчик отсылает к функции user_answer2
+    elif message.text == '📈Курс валют':  # курс валют
+        currate(message)
+    elif message.text == '🔗Сайт':  # сайт
+        site(message)
+    elif message.text == '📩Контакты':  # контакты
+        contacts(message)
+    elif message.text == '⬅Назад':  # команда назад
+        def back(message):
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=False)
+            item_news = types.KeyboardButton('🗞Новость')
+            item_somenews = types.KeyboardButton('🗞Новости🗞')
+            item_course = types.KeyboardButton('📈Курс валют')
+            item_site = types.KeyboardButton('🔗Сайт')
+            item_contact = types.KeyboardButton('📩Контакты')
+            item_help = types.KeyboardButton('⚠Помощь')
+            item_search = types.KeyboardButton('🔍Поиск')
+            markup.add(item_news, item_somenews, item_course, item_search,
+                       item_site, item_contact, item_help)
+            bot.send_message(message.chat.id, '⬅Назад', reply_markup=markup)
+        back(message)
 
 
-# Запускаем функцию main() в случае запуска скрипта.
-if __name__ == '__main__':
-    main()
+def user_answer(message):  # запрашиваем количество новостей для some_news, выводим, и вызываем back
+    if message.text == '2️⃣':
+        some_news(message, 2)
+        back(message)
+    if message.text == '3️⃣':
+        some_news(message, 3)
+        back(message)
+    if message.text == '4️⃣':
+        some_news(message, 4)
+        back(message)
+    if message.text == '5️⃣':
+        some_news(message, 5)
+        back(message)
+
+
+def user_answer2(message):  # запрашиваем ключевое слово для search_news, выводим, и вызываем back
+    search_news(message, message.text)
+    back(message)
+
+
+bot.polling(none_stop=True)
