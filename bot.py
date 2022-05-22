@@ -204,20 +204,18 @@ def bot_message(message):
 def user_answer(message):  # запрашиваем количество новостей для some_news, выводим, и вызываем back
     if message.text == '2️⃣':
         some_news(message, 2)
-        back(message)
     if message.text == '3️⃣':
         some_news(message, 3)
-        back(message)
     if message.text == '4️⃣':
         some_news(message, 4)
-        back(message)
     if message.text == '5️⃣':
         some_news(message, 5)
-        back(message)
+    back(message)
 
 
 def user_answer2(message):  # запрашиваем ключевое слово для search_news, выводим, и вызываем back
-    search_news(message, message.text)
+    if message.text != '⬅Назад':
+        search_news(message, message.text)
     back(message)
 
 
