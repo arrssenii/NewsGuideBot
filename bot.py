@@ -3,6 +3,7 @@ import telebot
 from telebot import types  # для работы с ботом
 import requests  # для сбора данных
 import pyshorteners  # для коротких ссылок
+from pyshorteners import exceptions
 from config import token  # токен
 
 short = pyshorteners.Shortener()  # объект класса, укорачивающего ссылки
@@ -38,9 +39,14 @@ def fresh_news(message):
         url = article['url']
         news_api.append({'source': source, 'title': title, 'url': url})  # добавляем всё, что нужно, в список
     # отправляем пользователю заголовок, источник и ссылку на новость
-    bot.send_message(message.chat.id, f'{news_api[0]["title"]}\n'
-                                      f'Источник - {news_api[0]["source"]}\n'
-                                      f'Читать новость - {short.tinyurl.short(news_api[0]["url"])}')
+    try:
+        bot.send_message(message.chat.id, f'{news_api[0]["title"]}\n'
+                                          f'Источник - {news_api[0]["source"]}\n'
+                                          f'Читать новость - {short.tinyurl.short(news_api[0]["url"])}')
+    except exceptions.ShorteningErrorException:
+        bot.send_message(message.chat.id, f'{news_api[0]["title"]}\n'
+                                          f'Источник - {news_api[0]["source"]}\n'
+                                          f'Читать новость - {news_api[0]["url"]}')
 
 
 def some_news(message, context):  # команда выводящая несколько новостей
@@ -54,11 +60,18 @@ def some_news(message, context):  # команда выводящая неско
         # добавляем всё, что нужно, в список
         news_api.append({'source': source, 'title': title, 'url': url, 'time': time})
     for i in range(int(context)):
-        bot.send_message(message.chat.id, f'{news_api[i]["title"]}\n'
-                                          f'Источник - {news_api[i]["source"]}\n'
-                                          f'Опубликовано {news_api[i]["time"][:10]} '
-                                          f'в {news_api[i]["time"][11:16]}\n'
-                                          f'Читать новость - {short.tinyurl.short(news_api[i]["url"])}')
+        try:
+            bot.send_message(message.chat.id, f'{news_api[i]["title"]}\n'
+                                              f'Источник - {news_api[i]["source"]}\n'
+                                              f'Опубликовано {news_api[i]["time"][:10]} '
+                                              f'в {news_api[i]["time"][11:16]}\n'
+                                              f'Читать новость - {short.tinyurl.short(news_api[i]["url"])}')
+        except exceptions.ShorteningErrorException:
+            bot.send_message(message.chat.id, f'{news_api[i]["title"]}\n'
+                                              f'Источник - {news_api[i]["source"]}\n'
+                                              f'Опубликовано {news_api[i]["time"][:10]} '
+                                              f'в {news_api[i]["time"][11:16]}\n'
+                                              f'Читать новость - {news_api[i]["url"]}')
 
 
 def contacts(message):  # команда выдаёт пользователю мои ФИ и способы связаться
@@ -126,9 +139,15 @@ def search_news(message, context):  # команда для поиска нов�
                 url = article['url']
                 news_api.append({'source': source, 'title': title, 'url': url})  # добавляем всё, что нужно, в список
         if news_api:
-            bot.send_message(message.chat.id, f'{news_api[0]["title"]}\n'
-                                      f'Источник - {news_api[0]["source"]}\n'
-                                      f'Читать новость - {short.tinyurl.short(news_api[0]["url"])}')
+            try:
+                bot.send_message(message.chat.id, f'{news_api[0]["title"]}\n'
+                                          f'Источник - {news_api[0]["source"]}\n'
+                                          f'Читать новость - {short.tinyurl.short(news_api[0]["url"])}')
+            except exceptions.ShorteningErrorException:
+                bot.send_message(message.chat.id, f'{news_api[0]["title"]}\n'
+                                                  f'Источник - {news_api[0]["source"]}\n'
+                                                  f'Читать новость - {news_api[0]["url"]}')
+
         else:
             if response.json()["totalResults"] == 0:
                 bot.send_message(message.chat.id, 'Нет результатов.')  # если результатов 0, то сообщаем пользователю
